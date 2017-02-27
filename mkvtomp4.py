@@ -612,6 +612,11 @@ class MkvtoMp4:
         if self.postopts:
             options['postopts'].extend(self.postopts)
 
+        if vcodec == "h264vaapi":
+            options['preopts'].extend(['-vaapi_device', '/dev/dri/renderD128'])
+            options['preopts'].extend(['-hwaccel', 'vaapi'])
+            options['preopts'].extend(['-hwaccel_output_format', 'vaapi'])
+
         # If using h264qsv, add the codec in front of the input for decoding
         if vcodec == "h264qsv" and info.video.codec.lower() == "h264" and self.qsv_decoder and (info.video.video_level / 10) < 5:
             options['preopts'].extend(['-vcodec', 'h264_qsv'])

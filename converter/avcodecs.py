@@ -729,6 +729,38 @@ class H264QSV(H264Codec):
         optlist.extend(['-look_ahead', '0'])
         return optlist
 
+class H264VAAPI(H264Codec):
+    """
+    H.264/AVC video codec.
+    @see http://ffmpeg.org/trac/ffmpeg/wiki/x264EncodingGuide
+    """
+    codec_name = 'h264vaapi'
+    ffmpeg_codec_name = 'h264_vaapi'
+
+    def _codec_specific_produce_ffmpeg_list(self, safe, stream=0):
+        optlist = []
+        if 'level' in safe:
+            if safe['level'] < 3.0 or safe['level'] > 4.2:
+                del safe['level']
+
+        if 'preset' in safe:
+            optlist.extend(['-preset', safe['preset']])
+        if 'quality' in safe:
+            optlist.extend(['-crf', str(safe['quality'])])
+        if 'profile' in safe:
+            optlist.extend(['-profile:v', safe['profile']])
+        if 'level' in safe:
+            optlist.extend(['-level', '40'])
+        if 'tune' in safe:
+            optlist.extend(['-tune', safe['tune']])
+        if 'wscale' in safe and 'hscale' in safe:
+            optlist.extend(['-vf', 'scale=%s:%s' % (safe['wscale'], safe['hscale'])])
+        elif 'wscale' in safe:
+            optlist.extend(['-vf', 'scale=%s:trunc(ow/a/2)*2' % (safe['wscale'])])
+        elif 'hscale' in safe:
+            optlist.extend(['-vf', 'scale=trunc((oh*a)/2)*2:%s' % (safe['hscale'])])
+        optlist.extend(['-vf', 'format=nv12|vaapi,hwupload'])
+        return optlist
 
 class H265Codec(VideoCodec):
     """
@@ -924,7 +956,7 @@ audio_codec_list = [
 ]
 
 video_codec_list = [
-    VideoNullCodec, VideoCopyCodec, TheoraCodec, H264Codec, H264QSV, H265Codec,
+    VideoNullCodec, VideoCopyCodec, TheoraCodec, H264Codec, H264QSV, H264VAAPI, H265Codec,
     DivxCodec, Vp8Codec, H263Codec, FlvCodec, Mpeg1Codec, NVEncH264, NVEncH265,
     Mpeg2Codec
 ]
