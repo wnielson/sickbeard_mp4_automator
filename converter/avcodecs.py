@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import pdb
 
 class BaseCodec(object):
     """
@@ -731,35 +732,50 @@ class H264QSV(H264Codec):
 
 class H264VAAPI(H264Codec):
     """
-    H.264/AVC video codec.
-    @see http://ffmpeg.org/trac/ffmpeg/wiki/x264EncodingGuide
+    H.264/AVC VA-API video codec.
+    @see https://wiki.libav.org/Hardware/vaapi
+    @see https://trac.ffmpeg.org/wiki/HWAccelIntro
     """
     codec_name = 'h264vaapi'
     ffmpeg_codec_name = 'h264_vaapi'
+
+    def parse_options(self, opt, stream=0):
+        optlist = super(H264VAAPI, self).parse_options(opt)
+        for i in range(len(optlist)):
+            if optlist[i] == '-vb':
+                optlist.pop(i)
+                optlist.pop(i)
+                break
+        return optlist
 
     def _codec_specific_produce_ffmpeg_list(self, safe, stream=0):
         optlist = []
         if 'level' in safe:
             if safe['level'] < 3.0 or safe['level'] > 4.2:
                 del safe['level']
+            else:
+                optlist.extend(['-level', str(int(10*float(safe['level'])))])
 
-        if 'preset' in safe:
-            optlist.extend(['-preset', safe['preset']])
         if 'quality' in safe:
-            optlist.extend(['-crf', str(safe['quality'])])
-        if 'profile' in safe:
-            optlist.extend(['-profile:v', safe['profile']])
-        if 'level' in safe:
-            optlist.extend(['-level', '40'])
-        if 'tune' in safe:
-            optlist.extend(['-tune', safe['tune']])
+            optlist.extend(['-qp:v', str(safe['quality'])])
+
+        video_filter = ['format=nv12|vaapi,hwupload']
         if 'wscale' in safe and 'hscale' in safe:
-            optlist.extend(['-vf', 'scale=%s:%s' % (safe['wscale'], safe['hscale'])])
+            video_filter.append('scale_vaapi=w=%s:h=%s' % (safe['wscale'], safe['hscale']))
         elif 'wscale' in safe:
-            optlist.extend(['-vf', 'scale=%s:trunc(ow/a/2)*2' % (safe['wscale'])])
+            width  = safe['wscale']
+            if width != safe['src_width']:
+                # Only add the scale filter if we actually need to scale
+                height = int(width/(float(safe['src_width'])/safe['src_height']))
+                video_filter.append('scale_vaapi=w=%s:h=%s' % (width, height))
         elif 'hscale' in safe:
-            optlist.extend(['-vf', 'scale=trunc((oh*a)/2)*2:%s' % (safe['hscale'])])
-        optlist.extend(['-vf', 'format=nv12|vaapi,hwupload'])
+            height = safe['hscale']
+            if height != safe['src_height']:
+                width  = int(height*(float(safe['src_width'])/safe['src_height']))
+                video_filter.append('scale_vaapi=w=%s:h=%s' % (width, height))
+
+        optlist.extend(['-vf', ','.join(video_filter)])
+
         return optlist
 
 class H265Codec(VideoCodec):

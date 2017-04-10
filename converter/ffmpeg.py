@@ -8,6 +8,8 @@ from subprocess import Popen, PIPE
 import logging
 import locale
 
+import pdb
+
 logger = logging.getLogger(__name__)
 
 console_encoding = locale.getdefaultlocale()[1] or 'UTF-8'
@@ -457,6 +459,9 @@ class FFMpeg(object):
                 del opts[ind]
 
         cmds.extend(opts)
+        cmds.extend(['-movflags', 'faststart'])
+        cmds.extend(['-qp:v', '22'])
+
         if postopts:
             cmds.extend(postopts)
         cmds.extend(['-y', outfile])
